@@ -1,12 +1,22 @@
 package routers
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func SetupRouter(db *pgxpool.Pool) *gin.Engine {
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins: true,
+		AllowMethods: []string{
+			"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
+		},
+		AllowHeaders: []string{
+			"Origin", "Content-Type", "Accept", "Authorization",
+		},
+	}))
 
 	// health check
 	apiV1 := router.Group("/api/v1")
