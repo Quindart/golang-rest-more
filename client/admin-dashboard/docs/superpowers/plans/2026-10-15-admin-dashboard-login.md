@@ -92,5 +92,5 @@
 
 ## Execution Notes
 
-- The workspace is not a Git repository, so implementation commits are not available unless the user separately asks to initialize Git.
+- The package is nested in the repository root; do not initialize a nested Git repository.
 - Official setup references: [shadcn/ui with Vite](https://ui.shadcn.com/docs/installation/vite), [Tailwind CSS with Vite](https://tailwindcss.com/docs/installation/using-vite), [React Router routing](https://reactrouter.com/start/data/routing).
