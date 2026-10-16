@@ -38,3 +38,25 @@ func (handler *UserController) GetAllUsers(ginContext *gin.Context) {
 		"users":   users,
 	})
 }
+
+func (handler *UserController) GetUserByID(ginContext *gin.Context) {
+	id := ginContext.Param("id")
+
+	ctx, cancel := context.WithTimeout(
+		ginContext.Request.Context(),
+		5*time.Second,
+	)
+	defer cancel()
+
+	user, err := handler.Repo.GetByID(ctx, id)
+	if err != nil {
+		ginContext.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to fetch user",
+		})
+		return
+	}
+	ginContext.JSON(http.StatusOK, gin.H{
+		"message": "Get user successfully",
+		"user":    user,
+	})
+}

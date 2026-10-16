@@ -27,5 +27,6 @@ func (r *UserRouter) Init() {
 	userRouter := r.Api.Group("/users")
 	{
 		userRouter.GET("", userController.GetAllUsers)
+		userRouter.GET("/:id", userController.GetUserByID)
 	}
 }
