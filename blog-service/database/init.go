@@ -16,10 +16,25 @@ func InitTables(ctx context.Context, db *pgxpool.Pool) error {
 			full_name VARCHAR(255) NOT NULL,
 			user_name VARCHAR(100) NOT NULL UNIQUE,
 			password TEXT NOT NULL,
+			phone_number VARCHAR(32),
+			email VARCHAR(255),
 			date_of_birth DATE,
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
+
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_number VARCHAR(32)`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL`,
+		`CREATE TABLE IF NOT EXISTS outbox_events (
+			id UUID PRIMARY KEY,
+			event_type VARCHAR(100) NOT NULL,
+			payload JSONB NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			published_at TIMESTAMPTZ
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_outbox_events_pending
+			ON outbox_events(created_at) WHERE published_at IS NULL`,
 
 		`CREATE TABLE IF NOT EXISTS categories (
 			id UUID PRIMARY KEY,

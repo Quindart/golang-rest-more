@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/quindart/sale-service/internal/client"
 	"github.com/quindart/sale-service/internal/model"
@@ -27,8 +27,6 @@ func NewCustomerHandler(
 
 func (h *CustomerHandler) GetAllCustomers(c echo.Context) error {
 	ctx := c.Request().Context()
-
-	// 1. Get customers from Customer Service database.
 	customers, err := h.CustomerRepo.GetAllCustomers(ctx)
 	if err != nil {
 		c.Logger().Errorf("get customers: %v", err)
@@ -41,39 +39,21 @@ func (h *CustomerHandler) GetAllCustomers(c echo.Context) error {
 		return c.JSON(http.StatusOK, []model.CustomerResponse{})
 	}
 
-	// 2. Collect unique user UUIDs.
-	uniqueIDs := make(map[string]struct{})
-	userIDs := make([]uuid.UUID, 0, len(customers))
-
-	for _, customer := range customers {
-		idKey := customer.UserID.String()
-
-		if _, exists := uniqueIDs[idKey]; exists {
-			continue
-		}
-
-		uniqueIDs[idKey] = struct{}{}
-		userIDs = append(userIDs, customer.UserID)
-	}
-
-	// 3. Call User Service once.
 	result := make([]model.CustomerResponse, 0, len(customers))
+	users := make(map[string]*client.UserResponse, len(customers))
 
 	for _, customer := range customers {
-		user, err := h.UserClient.GetUserByID(
-			ctx,
-			customer.UserID.String(),
-		)
-		if err != nil {
-			c.Logger().Errorf(
-				"get user %s: %v",
-				customer.UserID,
-				err,
-			)
-
-			return c.JSON(http.StatusBadGateway, map[string]string{
-				"message": "Failed to retrieve user information",
-			})
+		user, exists := users[customer.UserID.String()]
+		if !exists && h.UserClient != nil {
+			user, err = h.UserClient.GetUserByID(ctx, customer.UserID.String())
+			if err != nil {
+				c.Logger().Errorf("get user %s: %v", customer.UserID, err)
+				return c.JSON(http.StatusBadGateway, map[string]string{"message": "Failed to retrieve user information"})
+			}
+			users[customer.UserID.String()] = user
+		}
+		if user == nil {
+			return fmt.Errorf("user profile is unavailable for customer %s", customer.ID)
 		}
 
 		result = append(result, model.CustomerResponse{

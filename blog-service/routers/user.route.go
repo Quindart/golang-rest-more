@@ -3,6 +3,7 @@ package routers
 import (
 	"blog-service/controllers"
 	"blog-service/repositories"
+	"blog-service/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,10 +23,12 @@ func NewUserRouter(api *gin.RouterGroup, db *pgxpool.Pool) *UserRouter {
 
 func (r *UserRouter) Init() {
 	userRepo := repositories.NewUserRepository(r.DB)
-	userController := controllers.NewUserController(userRepo)
+	userService := services.NewUserService(r.DB, userRepo)
+	userController := controllers.NewUserController(userRepo, userService)
 
 	userRouter := r.Api.Group("/users")
 	{
+		userRouter.POST("", userController.CreateUser)
 		userRouter.GET("", userController.GetAllUsers)
 		userRouter.GET("/:id", userController.GetUserByID)
 	}

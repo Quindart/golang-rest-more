@@ -4,12 +4,47 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/quindart/sale-service/internal/model"
 )
 
 type CustomerRepository struct {
 	DB *pgxpool.Pool
+}
+
+func (r *CustomerRepository) Create(ctx context.Context, customer model.Customer, eventID string) error {
+	tx, err := r.DB.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin create customer: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var inserted bool
+	err = tx.QueryRow(ctx, `
+		INSERT INTO consumed_events (event_id, event_type)
+		VALUES ($1::uuid, 'user.created')
+		ON CONFLICT (event_id) DO NOTHING
+		RETURNING true
+	`, eventID).Scan(&inserted)
+	if err != nil && err != pgx.ErrNoRows {
+		return fmt.Errorf("record consumed event: %w", err)
+	}
+	if err == nil {
+		_, err = tx.Exec(ctx, `
+			INSERT INTO customers (user_id, phone_number, email)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id) DO UPDATE
+			SET phone_number = EXCLUDED.phone_number, email = EXCLUDED.email
+		`, customer.UserID, customer.PhoneNumber, customer.Email)
+		if err != nil {
+			return fmt.Errorf("insert customer: %w", err)
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit create customer: %w", err)
+	}
+	return nil
 }
 
 func NewCustomerRepository(db *pgxpool.Pool) *CustomerRepository {

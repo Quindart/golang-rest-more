@@ -46,9 +46,15 @@ func initTable(ctx context.Context, db *pgxpool.Pool) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS customers (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			phone_number VARCHAR(20),
-			user_id UUID,
-			email VARCHAR(255)
+			phone_number VARCHAR(32) NOT NULL,
+			user_id UUID NOT NULL UNIQUE,
+			email VARCHAR(255) NOT NULL
+		);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_user_id ON customers(user_id);
+		CREATE TABLE IF NOT EXISTS consumed_events (
+			event_id UUID PRIMARY KEY,
+			event_type VARCHAR(100) NOT NULL,
+			consumed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 	`
 	if _, err := db.Exec(ctx, query); err != nil {

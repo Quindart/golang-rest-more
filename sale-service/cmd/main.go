@@ -13,6 +13,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/quindart/sale-service/internal/adapter/messaging/rabbitmq"
+	"github.com/quindart/sale-service/internal/application"
 	"github.com/quindart/sale-service/internal/client"
 	"github.com/quindart/sale-service/internal/database"
 	"github.com/quindart/sale-service/internal/handler"
@@ -23,11 +25,6 @@ import (
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found; using environment variables")
-	}
-
-	userServiceURL := os.Getenv("USER_SERVICE_URL")
-	if userServiceURL == "" {
-		log.Fatal("USER_SERVICE_URL is required")
 	}
 
 	dbCtx, cancelDB := context.WithTimeout(
@@ -43,8 +40,12 @@ func main() {
 	}
 	defer db.Close()
 
+	appCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	customerRepo := repository.NewCustomerRepository(db)
-	userClient := client.NewUserClient(userServiceURL)
+	userClient := client.NewUserClient(os.Getenv("USER_SERVICE_URL"))
+	userCreatedHandler := application.NewUserCreatedHandler(customerRepo)
+	go rabbitmq.NewUserCreatedConsumer(userCreatedHandler).Run(appCtx)
 
 	customerHandler := handler.NewCustomerHandler(
 		customerRepo,
@@ -76,7 +77,7 @@ func main() {
 	}))
 
 	routes.Register(e, customerHandler)
-	
+
 	go func() {
 		if err := e.Start(":8083"); err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {
@@ -84,9 +85,7 @@ func main() {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
+	<-appCtx.Done()
 
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
