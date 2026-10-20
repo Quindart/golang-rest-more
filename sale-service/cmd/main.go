@@ -52,11 +52,31 @@ func main() {
 	)
 
 	e := echo.New()
+
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	routes.Register(e, customerHandler)
+	// Allow all origins
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions,
+		},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+		},
+	}))
 
+	routes.Register(e, customerHandler)
+	
 	go func() {
 		if err := e.Start(":8083"); err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {

@@ -37,6 +37,33 @@ test('direct dashboard access redirects to login without a session', async ({ pa
   await expect(page.getByLabel('Username')).toBeVisible()
 })
 
+test('blogs are available as a protected dashboard page with navigation', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByLabel('Username').fill('admin')
+  await page.getByLabel('Password').fill('admin123456Aa@')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page).toHaveURL(/\/dashboard$/)
+  await expect(page.getByRole('complementary', { name: 'Main navigation' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Blogs' })).toBeVisible()
+
+  await page.getByRole('link', { name: 'Blogs' }).click()
+  await expect(page).toHaveURL(/\/blogs$/)
+  await expect(page.getByRole('heading', { name: 'Blog dashboard' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Blogs')
+})
+
+test('user menu signs out from any dashboard page', async ({ page }) => {
+  await page.goto('/login')
+  await page.getByLabel('Username').fill('admin')
+  await page.getByLabel('Password').fill('admin123456Aa@')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.goto('/blogs')
+
+  await page.getByRole('button', { name: 'User menu' }).click()
+  await page.getByRole('menuitem', { name: 'Log out' }).click()
+  await expect(page).toHaveURL(/\/login$/)
+})
+
 test('sign out clears access to the dashboard', async ({ page }) => {
   await page.goto('/login')
   await page.getByLabel('Username').fill('admin')

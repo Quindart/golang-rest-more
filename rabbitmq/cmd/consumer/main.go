@@ -33,7 +33,7 @@ func run() error {
 	}
 
 	consumerTag := fmt.Sprintf("worker-%d", os.Getpid())
-
+	fmt.Println("consumerTag:::", consumerTag)
 	// Đăng ký Consumer với queue.
 	messages, err := ch.Consume(
 		queue.Name,

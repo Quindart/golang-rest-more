@@ -63,7 +63,6 @@ func (c *UserClient) GetUserByID(
 			resp.StatusCode,
 		)
 	}
-
 	var result GetUserResponse
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
